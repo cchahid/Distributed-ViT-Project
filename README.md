@@ -1,166 +1,223 @@
-Distributed Vision Transformer (ViT) Project
+Comparaison de Stratégies d'Optimisation Distribuée pour Vision Transformer
 
-This repository contains the code and resources for implementing and training a Vision Transformer (ViT) model in a distributed manner. The project explores various distributed training strategies to efficiently scale the training of large-scale vision models on multi-GPU or multi-node systems.
-Table of Contents
+Ce projet a pour objectif d'évaluer et de comparer l'efficacité de deux stratégies de formation distribuée — All-Reduce et Parameter Server — par rapport à une baseline sur un seul GPU, pour l'entraînement d'un modèle Vision Transformer (ViT).
+Table des Matières
 
-    Introduction
+    Objectif du Projet
 
-    Features
+    Architectures Étudiées
 
-    System Architecture
+        Baseline (Single GPU)
 
-    Getting Started
+        All-Reduce (Décentralisé)
 
-        Prerequisites
+        Parameter Server (Centralisé)
 
-        Installation
+    Structure du Projet
 
-    Usage
+    Mise en Route
 
-        Data Preparation
+    Comment Lancer les Entraînements
 
-        Running the Training
+    Critères d'Évaluation
 
-    Distributed Training Strategies
+    Contribuer
 
-    Results
+    Licence
 
-    Contributing
+Objectif du Projet
 
-    License
+L'objectif principal est de mesurer et d'analyser les performances de différentes architectures de communication pour la synchronisation des gradients lors de l'entraînement d'un grand modèle de vision. Nous cherchons à répondre aux questions suivantes :
 
-    Acknowledgments
+    Quelle stratégie offre la meilleure accélération (speedup) lorsque le nombre de GPU augmente ?
 
-Introduction
+    Quel est le surcoût (overhead) de communication de chaque méthode ?
 
-The Vision Transformer (ViT) has emerged as a state-of-the-art model for computer vision tasks. However, training these large models requires significant computational resources. This project aims to address this challenge by implementing a distributed training pipeline for the ViT model. By leveraging frameworks like PyTorch's DistributedDataParallel (DDP), we can significantly reduce training time and enable the training of even larger models.
+    Comment la scalabilité est-elle affectée par l'architecture de communication ?
 
-The primary goals of this project are:
+Architectures Étudiées
+Baseline (Single GPU)
 
-    To provide a clear and well-documented implementation of a Vision Transformer.
+Il s'agit de l'entraînement standard sur une seule carte graphique, sans aucune parallélisation. C'est la référence par rapport à laquelle les performances des autres stratégies seront mesurées.
 
-    To demonstrate how to set up and run distributed training on a target dataset (e.g., ImageNet, CIFAR-100).
+    Implémentation : training/single_gpu_main.py.
 
-    To compare the performance and scalability of different distributed strategies.
+All-Reduce (Décentralisé)
 
-Features
+Dans cette architecture, chaque processus (GPU) communique ses gradients à tous les autres processus. Il n'y a pas de serveur central. Les gradients sont moyennés de manière décentralisée, souvent via un algorithme en anneau (ring-allreduce).
 
-    Vision Transformer Implementation: A clean implementation of the ViT architecture from scratch.
+    Implémentation : training/all_reduce_main.py (basé sur hvd.DistributedOptimizer).
 
-    Distributed Training: Support for multi-GPU and multi-node training using torch.distributed.
+    Avantages : Évite le goulot d'étranglement d'un serveur central.
 
-    Multiple Strategies: Code to demonstrate different parallelization techniques (e.g., Data Parallelism).
+    Inconvénients : Le coût de communication peut augmenter avec le nombre de nœuds.
 
-    Scalability: Designed to scale efficiently with an increasing number of processing units.
+Parameter Server (Centralisé)
 
-    Easy Configuration: Training parameters, model architecture, and distributed settings can be easily configured.
+Cette architecture utilise un processus dédié (le Parameter Server, rang 0) qui est seul responsable de la mise à jour des poids du modèle. Les autres processus (les workers) calculent les gradients sur leurs lots de données et les envoient au serveur.
 
-System Architecture
+    Implémentation : training/parameter_server_main.py.
 
-This project uses a standard distributed training setup. The architecture consists of multiple processes (workers), each controlling a single GPU. The model is replicated across all GPUs, and each process receives a unique shard of the training data. Gradients are synchronized across all processes after the backward pass using the all-reduce algorithm.
+    Avantages : Simplifie la synchronisation. Peut être efficace pour des mises à jour asynchrones.
 
-(Optional: You can add a simple diagram here to illustrate the architecture if you'd like.)
-Getting Started
+    Inconvénients : Le serveur peut devenir un goulot d'étranglement réseau.
 
-Follow these instructions to set up the project on your local machine or cluster.
-Prerequisites
+Structure du Projet
+
+Distributed-ViT-Project/
+│
+├── Data/
+│   ├── prepare_data.py
+│   └── tiny-imagenet-200/     # (Données après exécution du script)
+│
+├── training/
+│   ├── single_gpu_main.py
+│   ├── all_reduce_main.py
+│   └── parameter_server_main.py
+│
+├── requirements.txt
+├── README.md
+└── LICENSE
+
+Mise en Route
+Prérequis
 
     Python 3.8+
 
     PyTorch 1.9+
 
-    CUDA 11.0+
+    CUDA 11.0+ & NCCL
 
-    [Add any other major dependencies, e.g., torchvision, numpy, etc.]
+    Horovod
 
 Installation
 
-    Clone the repository:
+    Clonez le dépôt :
 
     git clone https://github.com/cchahid/Distributed-ViT-Project.git
     cd Distributed-ViT-Project
 
-
-    Create a virtual environment (recommended):
-
-    python -m venv venv
-    source venv/bin/activate
-
-
-    Install the required packages:
-    (Please create a requirements.txt file for a better user experience)
+    Installez les dépendances :
 
     pip install -r requirements.txt
 
+    Note : L'installation de Horovod peut nécessiter des étapes supplémentaires. Consultez la documentation officielle de Horovod.
 
-Usage
-Data Preparation
+Comment Lancer les Entraînements
 
-    Download the [Your Dataset Name, e.g., CIFAR-100] dataset.
+IMPORTANT : Toutes les commandes doivent être exécutées depuis le répertoire racine Distributed-ViT-Project/.
 
-    Place it in the data/ directory or specify the path in the configuration file.
+Étape 1 : Préparer les données
+(Cette commande ne doit être exécutée qu'une seule fois)
 
-    [Add any specific preprocessing steps if necessary]
+python Data/prepare_data.py
 
-Running the Training
+Étape 2 : Lancer les entraînements
 
-The training script is launched using torchrun (or torch.distributed.launch). This utility handles setting up the distributed environment.
+    Lancer la baseline sur un seul GPU :
 
-To run the training on a single machine with N GPUs (e.g., 4 GPUs):
+    python training/single_gpu_main.py
 
-torchrun --nproc_per_node=4 train.py --batch_size 32 --epochs 100 --lr 1e-4
+    Lancer l'entraînement All-Reduce sur 4 GPUs :
 
+    horovodrun -np 4 python training/all_reduce_main.py
 
-Key Arguments:
+    Lancer l'entraînement Parameter Server sur 4 GPUs (1 serveur + 3 workers) :
 
-    --nproc_per_node: The number of GPUs to use on the current machine.
+    horovodrun -np 4 python training/parameter_server_main.py
 
-    --batch_size: The batch size per GPU.
+Critères d'Évaluation
 
-    [Add other important command-line arguments you have, like learning rate, model size, etc.]
+Les résultats seront collectés pour évaluer les points suivants :
 
-Distributed Training Strategies
+    Accélération (Speedup) : Comparaison du temps d'entraînement total par rapport à la baseline.
 
-This project primarily implements Data Parallelism using torch.nn.parallel.DistributedDataParallel (DDP).
+    Débit (Throughput) : Mesure du nombre d'images traitées par seconde.
 
-    How it works: The model is copied to every GPU. The dataset is split, and each GPU processes its own mini-batch. The gradients are then averaged across all GPUs before the optimizer updates the weights, ensuring all models remain synchronized.
+    Overhead de Communication : Analyse du temps passé dans les opérations de communication.
 
-(If you implement other strategies like model parallelism or pipeline parallelism, describe them here.)
-Results
+    Scalabilité : Efficacité de la parallélisation (Speedup / Nombre de GPUs).
 
-(This is a crucial section. After you run your experiments, fill this in with your findings.)
+Stratégie
+	
 
-    Training Performance: Include a table or graph showing training time vs. the number of GPUs.
+# GPUs
+	
 
-    Scalability: Plot the training throughput (e.g., images/second) as you increase the number of workers.
+Temps / Époque (s)
+	
 
-    Model Accuracy: Report the final accuracy of the trained model on the test set.
+Throughput (img/s)
+	
 
-| # GPUs | Training Time (hours) | Throughput (images/sec) | Accuracy (%) |
-| 1 | [X] | [Y] | [Z] |
-| 2 | [X] | [Y] | [Z] |
-| 4 | [X] | [Y] | [Z] |
-Contributing
+Scalabilité
 
-Contributions are welcome! If you have suggestions for improving this project, please feel free to open an issue or submit a pull request.
+Baseline
+	
 
-    Fork the Project
+1
+	
 
-    Create your Feature Branch (git checkout -b feature/AmazingFeature)
+[X]
+	
 
-    Commit your Changes (git commit -m 'Add some AmazingFeature')
+[Y]
+	
 
-    Push to the Branch (git push origin feature/AmazingFeature)
+1.0x
 
-    Open a Pull Request
+All-Reduce
+	
 
-License
+2
+	
 
-This project is licensed under the [Your License, e.g., MIT License]. See the LICENSE file for more details.
-Acknowledgments
+[X]
+	
 
-    This implementation is based on the original paper: An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale
+[Y]
+	
 
-    The PyTorch documentation on distributed training was an invaluable resource.
+[Z]
 
-    [Any other libraries, articles, or people you want to thank]
+All-Reduce
+	
+
+4
+	
+
+[X]
+	
+
+[Y]
+	
+
+[Z]
+
+Param. Server
+	
+
+2 (1S+1W)
+	
+
+[X]
+	
+
+[Y]
+	
+
+[Z]
+
+Param. Server
+	
+
+4 (1S+3W)
+	
+
+[X]
+	
+
+[Y]
+	
+
+[Z]
