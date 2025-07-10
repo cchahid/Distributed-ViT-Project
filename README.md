@@ -109,10 +109,21 @@ Les résultats seront collectés pour évaluer les points suivants :
     Overhead de Communication
 
     Scalabilité
+    Critères d'Évaluation
+
+Les résultats seront collectés pour évaluer les points suivants :
+
+    Accélération (Speedup)
+
+    Débit (Throughput)
+
+    Overhead de Communication
+
+    Scalabilité
 
 Stratégie
 	
-```
+
 # GPUs
 	
 
@@ -193,4 +204,3 @@ Param. Server
 	
 
 [Z]
-```
