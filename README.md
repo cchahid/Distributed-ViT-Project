@@ -38,7 +38,7 @@ Un processus (le Parameter Server) est seul responsable de la mise à jour des p
     Implémentation : training/parameter_server_main.py.
 
 Structure du Projet
-
+```
 Distributed-ViT-Project/
 │
 ├── Data/
@@ -53,7 +53,7 @@ Distributed-ViT-Project/
 ├── requirements.txt
 ├── README.md
 └── LICENSE
-
+```
 Mise en Route
 Prérequis
 
@@ -112,7 +112,7 @@ Les résultats seront collectés pour évaluer les points suivants :
 
 Stratégie
 	
-
+```
 # GPUs
 	
 
@@ -193,3 +193,4 @@ Param. Server
 	
 
 [Z]
+```
