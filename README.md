@@ -126,7 +126,7 @@ Stratégie
 
 # GPUs
 	
-
+```
 Temps / Époque (s)
 	
 
@@ -204,3 +204,4 @@ Param. Server
 	
 
 [Z]
+```
